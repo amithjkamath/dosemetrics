@@ -1,48 +1,34 @@
+from dosemetrics import dvh
+from dosemetrics import compliance
+
 import os
 import glob
-
 import SimpleITK as sitk
-import numpy as np
-
-
+import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 
 plt.style.use("dark_background")
 
-from dosemetrics import dvh
-from dosemetrics import compliance
-
-
-def plot_stats(_stats):
-    fig = plt.figure()
-    plt.plot(
-        _stats["bins"], _stats["values"], color=_stats["color"], label=_stats["name"]
-    )
-    plt.legend(loc="best")
-    plt.xlabel("Dose [Gy]")
-    plt.ylabel("Ratio of Total Structure Volume [%]")
-    plt.title(
-        f"Volume: {_stats['volume']:4.3f} (cc); Max Dose: {_stats['max']:2.3f}; Mean Dose: {_stats['mean']:2.3f}"
-    )
-    plt.axvline(x=_stats["mean"], color="y")
-    plt.axvline(x=_stats["max"], color="r")
-    plt.grid()
-    return fig
-
 
 def main():
-    repo_root = os.path.abspath("..")
-    data_folder = os.path.join(repo_root, "data/test_subject")
-    structures = glob.glob(data_folder + "/*[!Dose*].nii.gz")
 
+    repo_root = os.path.dirname(os.path.abspath(__file__))
+    data_folder = os.path.join(repo_root, "..", "data", "test_subject")
     dose_image = sitk.ReadImage(data_folder + "/Dose.nii.gz")
     dose_array = sitk.GetArrayFromImage(dose_image)
 
-    pp = PdfPages(os.path.join(data_folder, "..", "quality_index.pdf"))
+    df = pd.DataFrame()
+
+    pp = PdfPages(
+        os.path.join(
+            data_folder, "..", f"quality_index_{data_folder.split('/')[-1]}.pdf"
+        )
+    )
 
     constraints = compliance.get_default_constraints()
 
+    structures = glob.glob(data_folder + "/*[!Dose*].nii.gz")
     structures = sorted(structures)
     for structure in structures:
         struct_name = structure.split("/")[-1].split(".")[0]
@@ -78,7 +64,16 @@ def main():
             )
             plt.grid()
             pp.savefig(fig)
+
+            df.loc[struct_name, "Type"] = constraint_type
+            df.loc[struct_name, "Limit"] = constraint_limit
+            df.loc[struct_name, "QI"] = qi
     pp.close()
+    df.to_csv(
+        os.path.join(
+            data_folder, "..", f"quality_index_{data_folder.split('/')[-1]}.csv"
+        )
+    )
 
 
 if __name__ == "__main__":
