@@ -124,10 +124,10 @@ if __name__ == "__main__":
     output_file = os.path.join(repo_root, "..", "results", "first_overall_dvh.png")
     plot_dvh(data_root, output_file)
     """
-    data_root = "~/data/EORTC-ICR/output/"
-    subject_name = "099_site_233"
-    first_plan = "eortc_0001_099_site_233_delineation_1_corrected"
-    last_plan = "eortc_0003_099_site_233_delineation_2_dose_1_corrected"
+    data_root = "/home/akamath/Documents/data/ICR/output"
+    subject_name = "555_site_502"
+    first_plan = "eortc_0138_555_site_502_delineation_1_corrected"
+    last_plan = "eortc_0139_555_site_502_delineation_2_dose_1_corrected"
 
     first_folder = os.path.join(data_root, subject_name, first_plan)
     last_folder = os.path.join(data_root, subject_name, last_plan)
