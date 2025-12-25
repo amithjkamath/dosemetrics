@@ -3,10 +3,13 @@
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://python.org)
 [![PyPI version](https://badge.fury.io/py/dosemetrics.svg)](https://badge.fury.io/py/dosemetrics)
 [![Tests](https://github.com/amith-kamath/dosemetrics/actions/workflows/tests.yml/badge.svg)](https://github.com/amith-kamath/dosemetrics/actions/workflows/tests.yml)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://amith-kamath.github.io/dosemetrics/)
 [![License](https://img.shields.io/badge/license-CC%20BY--SA--NC%204.0-green.svg)](LICENSE)
 [![Development Status](https://img.shields.io/badge/status-alpha-orange.svg)](https://github.com/amith-kamath/dosemetrics)
 
 A Python library for measuring radiotherapy doses and creating interactive visualizations for radiation therapy treatment planning and analysis.
+
+**📚 [Documentation](https://amith-kamath.github.io/dosemetrics/) | 🚀 [Try Live Demo](https://huggingface.co/spaces/contouraid/dosemetrics) | 💻 [GitHub](https://github.com/amith-kamath/dosemetrics)**
 
 ## Overview
 
@@ -85,12 +88,34 @@ make help       # Show all available commands
 make setup      # Initial setup and install dependencies
 make test       # Run all tests
 make run        # Run the Streamlit app locally
+make docs       # Serve documentation locally
 make deploy     # Deploy to Hugging Face Space
 make clean      # Clean up cache and temporary files
 make info       # Show project information
 ```
 
 See `make help` for a complete list of commands.
+
+## Documentation
+
+Comprehensive documentation is available at **[amith-kamath.github.io/dosemetrics](https://amith-kamath.github.io/dosemetrics/)**
+
+- [Getting Started Guide](https://amith-kamath.github.io/dosemetrics/getting-started/quickstart/)
+- [Using Your Own Data](https://amith-kamath.github.io/dosemetrics/notebooks/getting-started-own-data/)
+- [API Reference](https://amith-kamath.github.io/dosemetrics/api/)
+- [User Guide](https://amith-kamath.github.io/dosemetrics/user-guide/overview/)
+
+### Building Documentation Locally
+
+```bash
+# Install documentation dependencies
+pip install -e ".[docs]"
+
+# Serve with live-reload
+make docs
+# or
+mkdocs serve
+```
 
 ## Usage Examples
 

@@ -1,5 +1,5 @@
 # Makefile for DoseMetrics
-.PHONY: help setup run test deploy clean format lint install check update info app
+.PHONY: help setup run test deploy clean format lint install check update info app docs docs-serve docs-build
 
 # Default target
 .DEFAULT_GOAL := help
@@ -48,6 +48,18 @@ deploy: ## Deploy to Hugging Face Space
 	@chmod +x scripts/deploy_to_hf.sh
 	@./scripts/deploy_to_hf.sh
 
+docs-serve: ## Serve documentation locally with live-reload
+	@echo "$(BLUE)📚 Starting documentation server...$(NC)"
+	@echo "$(YELLOW)Make sure you have docs dependencies installed: pip install -e \".[docs]\"$(NC)"
+	@mkdocs serve
+
+docs-build: ## Build static documentation site
+	@echo "$(BLUE)📚 Building documentation...$(NC)"
+	@mkdocs build
+	@echo "$(GREEN)✅ Documentation built in site/$(NC)"
+
+docs: docs-serve ## Alias for docs-serve
+
 clean: ## Clean up cache and temporary files
 	@echo "$(BLUE)🧹 Cleaning up...$(NC)"
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -58,7 +70,7 @@ clean: ## Clean up cache and temporary files
 	@find . -type d -name ".ipynb_checkpoints" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name ".coverage" -delete 2>/dev/null || true
 	@find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
-	@rm -rf build/ dist/ 2>/dev/null || true
+	@rm -rf build/ dist/ site/ 2>/dev/null || true
 	@echo "$(GREEN)✅ Cleanup complete$(NC)"
 
 format: ## Format code with black (if installed)
