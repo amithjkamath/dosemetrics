@@ -155,6 +155,8 @@ class StructureSet:
         if name in self.structures:
             raise ValueError(f"Structure '{name}' already exists in the set")
 
+        if structure.spacing is None:
+            structure.spacing = tuple(self.spacing)
         if tuple(structure.spacing) != tuple(self.spacing):
             raise ValueError("Structure spacing incompatible with StructureSet")
         if tuple(structure.origin) != tuple(self.origin):

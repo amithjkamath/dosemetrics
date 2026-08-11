@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - 2026-08-11
 
 ### Added
 - **Error-tail metrics** in `metrics.dose_comparison`, for the localized errors a
@@ -42,6 +42,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `interpolate=True`. Verified against an external implementation on 60
   patient-plans: dose_score and DVH_score now agree to floating-point epsilon
   where DVH_score previously differed by up to 0.158 Gy per patient.
+
+### Changed
+- **`Structure` voxel spacing is now optional and defaults to `None`** (was
+  `(1.0, 1.0, 1.0)`). A structure is often a mask on a grid defined elsewhere,
+  usually by a `Dose`; requiring the caller to restate that grid on every
+  structure was friction, and the old default was wrong in two ways. Pairing a
+  default-spacing structure with a real dose raised a compatibility error that
+  said nothing actionable, and any metric reading `structure.spacing` computed a
+  volume on a 1 mm grid — silently incorrect rather than failing.
+  - A structure with `spacing=None` is compatible with any dose of matching
+    shape; shape is still enforced, and explicitly stated spacing is still
+    checked exactly as before.
+  - `compute_dose_at_volume_cc` now takes the grid from the `Dose`, which is what
+    is being sampled, rather than from the structure.
+  - `Structure.volume_cc()` raises a clear error when spacing is unknown instead
+    of returning a 1 mm-grid volume.
+  - Callers that passed spacing explicitly are unaffected.
 
 ## [0.3.0] - 2025-12-28
 

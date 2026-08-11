@@ -200,8 +200,11 @@ def compute_dose_at_volume_cc(
     if len(dose_values) == 0:
         return 0.0
 
-    # Convert cc to number of voxels
-    voxel_volume_cc = np.prod(structure.spacing) / 1000.0  # mm³ to cc
+    # Convert cc to number of voxels. The grid comes from the dose, not the
+    # structure: the dose is what is being sampled, the two are required to
+    # agree wherever the structure states a grid, and the structure may state
+    # none at all.
+    voxel_volume_cc = np.prod(dose.spacing) / 1000.0  # mm³ to cc
     num_voxels = int(np.round(volume_cc / voxel_volume_cc))
 
     if interpolate:

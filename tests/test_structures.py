@@ -411,3 +411,78 @@ class TestStructureEdgeCases:
         
         # 3 voxels * 0.5 * 0.5 * 5.0 = 3.75 mm³
         assert oar.volume_cc() == pytest.approx(0.00375)
+
+
+class TestOptionalSpacing:
+    """Spacing is optional: a structure may be a mask on someone else's grid.
+
+    It used to default to (1, 1, 1), which was wrong twice over. Pairing such a
+    structure with a real dose raised a compatibility error that told the user
+    nothing actionable, and any metric reading ``structure.spacing`` computed a
+    volume on a 1 mm grid -- silently wrong rather than failing.
+    """
+
+    @staticmethod
+    def _dose_and_mask(spacing=(3.75, 3.75, 2.38)):
+        import numpy as np
+        from dosemetrics.dose import Dose
+
+        arr = np.zeros((8, 8, 8))
+        arr[2:6, 2:6, 2:6] = 60.0
+        mask = np.zeros((8, 8, 8), dtype=bool)
+        mask[2:6, 2:6, 2:6] = True
+        return Dose(arr, spacing, (0.0, 0.0, 0.0)), mask
+
+    def test_spacing_defaults_to_none(self):
+        from dosemetrics.structures import OAR
+
+        _, mask = self._dose_and_mask()
+        assert OAR("s", mask).spacing is None
+
+    def test_unspecified_spacing_is_compatible_with_any_matching_dose(self):
+        from dosemetrics.structures import OAR
+
+        dose, mask = self._dose_and_mask()
+        assert dose.is_compatible_with_structure(OAR("s", mask))
+        # The whole point: this used to raise.
+        assert dose.get_dose_in_structure(OAR("s", mask)).size > 0
+
+    def test_shape_is_still_enforced(self):
+        import numpy as np
+        from dosemetrics.structures import OAR
+
+        dose, _ = self._dose_and_mask()
+        wrong = np.ones((4, 4, 4), dtype=bool)
+        assert not dose.is_compatible_with_structure(OAR("s", wrong))
+
+    def test_explicit_spacing_is_still_checked(self):
+        from dosemetrics.structures import OAR
+
+        dose, mask = self._dose_and_mask()
+        assert dose.is_compatible_with_structure(
+            OAR("s", mask, spacing=(3.75, 3.75, 2.38))
+        )
+        assert not dose.is_compatible_with_structure(
+            OAR("s", mask, spacing=(1.0, 1.0, 1.0))
+        )
+
+    def test_volume_without_spacing_raises_instead_of_lying(self):
+        import pytest
+        from dosemetrics.structures import OAR
+
+        _, mask = self._dose_and_mask()
+        with pytest.raises(ValueError, match="no voxel spacing"):
+            _ = OAR("s", mask).volume_cc()
+
+    def test_dose_volume_metric_uses_the_dose_grid(self):
+        """D0.1cc must not depend on whether the caller stated the spacing."""
+        import pytest
+        from dosemetrics.metrics.dvh import compute_dose_at_volume_cc
+        from dosemetrics.structures import OAR
+
+        dose, mask = self._dose_and_mask()
+        without = compute_dose_at_volume_cc(dose, OAR("o", mask), 0.1)
+        with_it = compute_dose_at_volume_cc(
+            dose, OAR("o", mask, spacing=(3.75, 3.75, 2.38)), 0.1
+        )
+        assert without == pytest.approx(with_it)

@@ -58,7 +58,7 @@ class Structure(ABC):
         self,
         name: str,
         mask: Optional[np.ndarray] = None,
-        spacing: Tuple[float, float, float] = (1.0, 1.0, 1.0),
+        spacing: Optional[Tuple[float, float, float]] = None,
         origin: Tuple[float, float, float] = (0.0, 0.0, 0.0),
     ):
         """
@@ -67,11 +67,22 @@ class Structure(ABC):
         Args:
             name: Name/identifier of the structure
             mask: 3D binary mask array (will be converted to bool)
-            spacing: Voxel spacing in (x, y, z) mm
+            spacing: Voxel spacing in (x, y, z) mm. Leave as None when the
+                structure is a mask on a grid defined elsewhere -- typically a
+                :class:`~dosemetrics.dose.Dose`. A structure with unspecified
+                spacing is compatible with any dose of matching shape, and
+                dose-volume metrics use the dose's spacing.
+
+                This used to default to ``(1.0, 1.0, 1.0)``, which was wrong in
+                two ways: pairing such a structure with a real dose raised a
+                confusing compatibility error, and any metric reading
+                ``structure.spacing`` computed a volume on a 1 mm grid that was
+                silently incorrect rather than failing. Passing spacing
+                explicitly still works and is still checked.
             origin: Origin coordinates in mm
         """
         self.name = name
-        self.spacing = tuple(spacing)
+        self.spacing = tuple(spacing) if spacing is not None else None
         self.origin = tuple(origin)
 
         # Set and validate mask
@@ -131,6 +142,12 @@ class Structure(ABC):
         Returns:
             Volume in cc (considering voxel spacing)
         """
+        if self.spacing is None:
+            raise ValueError(
+                f"Structure '{self.name}' has no voxel spacing, so its volume is "
+                f"undefined. Construct it with spacing=..., or compute the "
+                f"volume from the Dose that defines the grid."
+            )
         voxel_volume_mm3 = np.prod(self.spacing)  # mm³
         voxel_volume_cc = float(voxel_volume_mm3 / 1000.0)  # Convert mm³ to cc
         return float(self.volume_voxels() * voxel_volume_cc)
@@ -159,7 +176,7 @@ class Structure(ABC):
 
         # Convert to world coordinates
         centroid_world = [
-            float(self.origin[i] + centroid_voxel[i] * self.spacing[i])
+            float(self.origin[i] + centroid_voxel[i] * (self.spacing or (1.0, 1.0, 1.0))[i])
             for i in range(3)
         ]
 
