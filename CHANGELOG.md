@@ -31,6 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation: an "Error tail and localized artifacts" section in the
   quality-metrics user guide, and four rows in the classification table.
 
+### Fixed
+- **`compare_dvh_score` did not reproduce OpenKBP DVH scores.** It is documented
+  as "the complete OpenKBP DVH score", but its D0.1cc took the n-th hottest voxel
+  exactly, whereas the challenge evaluator clamps to at least one voxel and takes
+  a linearly interpolated percentile. On a 442-voxel brainstem the two disagree
+  by about 1 Gy, enough to shift a published DVH score by ~0.8%.
+  `compute_dose_at_volume_cc` gains an `interpolate` flag (default `False`, so
+  existing callers are unaffected) and `compare_dvh_score` now uses
+  `interpolate=True`. Verified against an external implementation on 60
+  patient-plans: dose_score and DVH_score now agree to floating-point epsilon
+  where DVH_score previously differed by up to 0.158 Gy per patient.
+
 ## [0.3.0] - 2025-12-28
 
 ### Added

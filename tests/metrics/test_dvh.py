@@ -506,3 +506,79 @@ class TestDVHAUC:
             gradient_dose, partial_structure, dose_range=(0.0, 60.0)
         )
         assert auc1 == pytest.approx(auc2)
+
+
+class TestDoseAtVolumeCcConvention:
+    """D0.1cc has two defensible conventions and they disagree by ~1 Gy.
+
+    ``interpolate=False`` (default) returns the n-th hottest voxel exactly.
+    ``interpolate=True`` clamps to at least one voxel and interpolates a
+    percentile, which is what the OpenKBP challenge evaluator does. The
+    difference is not cosmetic: on a small OAR it is around 1 Gy, enough to move
+    a published DVH score, so ``compare_dvh_score`` must use the OpenKBP
+    convention to reproduce OpenKBP numbers.
+    """
+
+    @staticmethod
+    def _setup(n_voxels=442, spacing=(3.75, 3.75, 2.38)):
+        import numpy as np
+        from dosemetrics.dose import Dose
+        from dosemetrics.structures import OAR
+
+        rng = np.random.default_rng(0)
+        side = 20
+        arr = np.zeros((side, side, side))
+        mask = np.zeros((side, side, side), dtype=bool)
+        flat = rng.uniform(0.0, 40.0, n_voxels)
+        idx = np.unravel_index(np.arange(n_voxels), (side, side, side))
+        arr[idx] = flat
+        mask[idx] = True
+        return Dose(arr, spacing, (0.0, 0.0, 0.0)), OAR("oar", mask, spacing=spacing), flat
+
+    def test_order_statistic_returns_the_nth_hottest_voxel(self):
+        import numpy as np
+        from dosemetrics.metrics.dvh import compute_dose_at_volume_cc
+
+        dose, oar, flat = self._setup()
+        voxel_cc = np.prod(oar.spacing) / 1000.0
+        n = int(np.round(0.1 / voxel_cc))
+        expected = float(np.sort(flat)[::-1][n - 1])
+        assert compute_dose_at_volume_cc(dose, oar, 0.1) == pytest.approx(expected)
+
+    def test_openkbp_convention_matches_the_challenge_formula(self):
+        import numpy as np
+        from dosemetrics.metrics.dvh import compute_dose_at_volume_cc
+
+        dose, oar, flat = self._setup()
+        voxel_mm3 = float(np.prod(oar.spacing))
+        n = max(1, int(np.round(100.0 / voxel_mm3)))
+        frac = 100.0 - n / len(flat) * 100.0
+        expected = float(np.percentile(flat, frac))
+        assert compute_dose_at_volume_cc(
+            dose, oar, 0.1, interpolate=True
+        ) == pytest.approx(expected)
+
+    def test_the_two_conventions_actually_differ(self):
+        from dosemetrics.metrics.dvh import compute_dose_at_volume_cc
+
+        dose, oar, _ = self._setup()
+        exact = compute_dose_at_volume_cc(dose, oar, 0.1)
+        interp = compute_dose_at_volume_cc(dose, oar, 0.1, interpolate=True)
+        assert exact != interp, "conventions must not silently coincide"
+        assert interp <= exact, "interpolation lands at or below the order statistic"
+
+    def test_interpolate_clamps_to_at_least_one_voxel(self):
+        """A requested volume smaller than one voxel must not become zero."""
+        from dosemetrics.metrics.dvh import compute_dose_at_volume_cc
+
+        dose, oar, _ = self._setup()
+        value = compute_dose_at_volume_cc(dose, oar, 1e-9, interpolate=True)
+        assert value > 0.0
+
+    def test_default_is_unchanged_for_existing_callers(self):
+        from dosemetrics.metrics.dvh import compute_dose_at_volume_cc
+
+        dose, oar, _ = self._setup()
+        assert compute_dose_at_volume_cc(dose, oar, 0.1) == compute_dose_at_volume_cc(
+            dose, oar, 0.1, interpolate=False
+        )
