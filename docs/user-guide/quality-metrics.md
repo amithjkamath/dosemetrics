@@ -65,6 +65,10 @@ signature, not by the clinical class.
 | Global voxel agreement | Body-mask RMSE | `compare_body_rmse` | Reference-based | Gy | Lower |
 | Global voxel agreement | Gamma passing rate | `compare_gamma` | Reference-based | % | Higher |
 | Constraint agreement | OAR constraint disagreement | `compare_oar_constraints` | Reference-based | Fraction | Lower |
+| Error tail | Maximum absolute error | `dose_comparison.compare_max_error` | Reference-based | Gy | Lower |
+| Error tail | Absolute-error percentile | `dose_comparison.compare_error_percentile` | Reference-based | Gy | Lower |
+| Error tail | Tail mean absolute error (CVaR) | `dose_comparison.compare_tail_error` | Reference-based | Gy | Lower |
+| Error tail | Isolated extrema count | `dose_comparison.compute_isolated_extrema` | Reference-free | Voxels | Lower |
 
 ## Pairing single-plan and comparison metrics
 
@@ -121,6 +125,70 @@ from dosemetrics.metrics import compare_gamma
 
 passing_rate_percent = compare_gamma(reference, evaluated, body=body)
 ```
+
+### Error tail and localized artifacts
+
+**Reference-based** · `compare_max_error`, `compare_error_percentile`,
+`compare_tail_error` · Gy · lower is better.
+**Reference-free** · `compute_isolated_extrema` · voxel counts · lower is better.
+
+A mean over millions of voxels cannot see a small number of badly wrong ones. A
+single voxel that is 60 Gy wrong in a $128^3$ volume moves the mean absolute
+error by less than $0.01\ \mathrm{Gy}$, so a model can improve every mean-based
+score while leaving — or introducing — errors that are obvious on a dose
+display. These metrics describe that tail.
+
+The tail mean at level $1-f$ is the conditional value at risk (CVaR, or
+superquantile) of the absolute-error distribution, averaging the worst fraction
+$f$ of voxels:
+
+$$
+\mathrm{CVaR}_{f}
+=\frac{1}{\lceil fN\rceil}\sum_{i\in\mathcal{T}_{f}}
+\left|D_{\mathrm{evaluated},i}-D_{\mathrm{reference},i}\right|,
+$$
+
+where $\mathcal{T}_{f}$ indexes the $\lceil fN\rceil$ largest absolute errors.
+It interpolates between the two extremes: $f=1$ recovers the mean absolute
+error exactly, and $f\to 0$ approaches the maximum. Averaging over a tail rather
+than reporting a single order statistic keeps the quantity stable, which the
+maximum is not.
+
+```python
+from dosemetrics.metrics.dose_comparison import (
+    compare_error_percentile,
+    compare_max_error,
+    compare_tail_error,
+    compute_isolated_extrema,
+)
+
+worst_voxel_gy = compare_max_error(reference, evaluated)
+p999_gy = compare_error_percentile(reference, evaluated, percentile=99.9)
+worst_decile_gy = compare_tail_error(reference, evaluated, fraction=0.1)
+```
+
+`compute_isolated_extrema` asks a different question, and takes no reference:
+**is this dose distribution locally self-consistent?** Dose is physically smooth
+at the voxel scale, so a voxel differing sharply from its own neighbourhood is
+an artifact rather than anatomy. The function compares each voxel with the
+median of its neighbourhood and counts those falling below (`n_dropout`) or
+rising above (`n_hotspot`) by more than `deviation`, restricted to voxels whose
+neighbourhood is at or above `relative_threshold` of the peak.
+
+Both the search region and the dose scale come from the median-filtered volume,
+never from raw voxel values — a dropout voxel is by definition far below its
+surroundings, so thresholding on its own value would exclude it from the region
+it corrupts.
+
+```python
+counts = compute_isolated_extrema(predicted_dose, relative_threshold=0.5,
+                                  deviation=5.0)
+counts["n_dropout"], counts["fraction_isolated"]
+```
+
+Counts are comparable across dose distributions only when they share a voxel
+grid and the same `deviation`, since neighbourhood and threshold are both
+absolute.
 
 ## Constraint agreement
 

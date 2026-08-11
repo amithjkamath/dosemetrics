@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Error-tail metrics** in `metrics.dose_comparison`, for the localized errors a
+  mean cannot see. A single voxel wrong by 60 Gy in a 128³ volume moves mean
+  absolute error by under 0.01 Gy, so a model can improve every mean-based score
+  while leaving artifacts that are obvious on a dose display.
+  - `compare_max_error()`: largest absolute dose difference.
+  - `compare_error_percentile()`: a chosen percentile of absolute error;
+    `percentile=100` reproduces `compare_max_error()`.
+  - `compare_tail_error()`: mean of the worst `fraction` of absolute errors, i.e.
+    the conditional value at risk (superquantile) at level `1 - fraction`.
+    `fraction=1.0` reproduces `compare_mae()` exactly. More stable than the
+    maximum, which is a single order statistic.
+  - `compute_isolated_extrema()`: reference-free count of voxels deviating from
+    their local median by more than a threshold, separated into `n_dropout` and
+    `n_hotspot`. Detects salt-and-pepper artifacts in a distribution whose
+    agreement with a reference is otherwise good. Both the search region and the
+    dose scale are taken from the median-filtered volume, never from raw values —
+    a dropout voxel is far below its surroundings, so thresholding on its own
+    value would exclude it from the region it corrupts.
+- 31 tests in `tests/metrics/test_tail_error.py`, including that a single bad
+  voxel moves the tail metrics while leaving MAE effectively unchanged.
+- Documentation: an "Error tail and localized artifacts" section in the
+  quality-metrics user guide, and four rows in the classification table.
+
 ## [0.3.0] - 2025-12-28
 
 ### Added
