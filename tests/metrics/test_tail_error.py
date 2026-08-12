@@ -266,3 +266,65 @@ class TestPublicAPI:
         ):
             assert name in dose_comparison.__all__
             assert hasattr(dose_comparison, name)
+
+
+class TestRegionRestriction:
+    """`region` confines the search to voxels the caller considers meaningful.
+
+    Motivation from real data: measuring masked dose-prediction output without it
+    counted roughly fifty flagged voxels per patient against about one genuine
+    artifact. A masked prediction is exactly zero outside its mask, and where the
+    mask is irregular an exterior zero can sit in a neighbourhood whose median is
+    still high, so it is flagged. The count then describes the mask rather than
+    the model. (A smooth convex boundary does *not* trigger this -- just outside
+    it the local median is already low -- which is why the tests below exclude
+    voxels explicitly rather than trying to reproduce mask geometry.)
+    """
+
+    @staticmethod
+    def _hot_block_with_two_artifacts():
+        """A uniform hot block with one dropout inside a region and one outside."""
+        arr = np.full((24, 24, 24), 60.0)
+        arr[6, 6, 6] = 0.0        # inside the region of interest
+        arr[18, 18, 18] = 0.0     # outside it
+        region = np.zeros((24, 24, 24), dtype=bool)
+        region[:12, :12, :12] = True
+        return Dose(arr, SPACING, ORIGIN), region
+
+    def test_counts_both_artifacts_without_a_region(self):
+        dose, _ = self._hot_block_with_two_artifacts()
+        assert dose_comparison.compute_isolated_extrema(
+            dose, deviation=5.0)["n_dropout"] == 2
+
+    def test_region_excludes_the_one_outside(self):
+        dose, region = self._hot_block_with_two_artifacts()
+        result = dose_comparison.compute_isolated_extrema(
+            dose, deviation=5.0, region=region)
+        assert result["n_dropout"] == 1
+        assert result["n_hotspot"] == 0
+
+    def test_region_shrinks_the_searched_volume(self):
+        dose, region = self._hot_block_with_two_artifacts()
+        allv = dose_comparison.compute_isolated_extrema(dose, deviation=5.0)
+        part = dose_comparison.compute_isolated_extrema(
+            dose, deviation=5.0, region=region)
+        assert part["n_evaluated"] < allv["n_evaluated"]
+
+    def test_erosion_shrinks_it_further(self):
+        dose, region = self._hot_block_with_two_artifacts()
+        plain = dose_comparison.compute_isolated_extrema(
+            dose, deviation=5.0, region=region)
+        eroded = dose_comparison.compute_isolated_extrema(
+            dose, deviation=5.0, region=region, erode_region=2)
+        assert eroded["n_evaluated"] < plain["n_evaluated"]
+
+    def test_shape_mismatch_raises(self):
+        dose, _ = self._hot_block_with_two_artifacts()
+        with pytest.raises(ValueError, match="region shape"):
+            dose_comparison.compute_isolated_extrema(
+                dose, region=np.ones((4, 4, 4), dtype=bool))
+
+    def test_erode_without_region_raises(self):
+        dose, _ = self._hot_block_with_two_artifacts()
+        with pytest.raises(ValueError, match="erode_region requires region"):
+            dose_comparison.compute_isolated_extrema(dose, erode_region=2)

@@ -919,6 +919,8 @@ def compute_isolated_extrema(
     relative_threshold: float = 0.5,
     deviation: float = 5.0,
     neighborhood_size: int = 3,
+    region: Optional[np.ndarray] = None,
+    erode_region: int = 0,
 ) -> Dict[str, float]:
     """
     Count voxels that deviate sharply from their immediate neighbourhood.
@@ -936,6 +938,19 @@ def compute_isolated_extrema(
         (default: 5.0).
     neighborhood_size : int, optional
         Edge length of the cubic median-filter window (default: 3).
+    region : ndarray of bool, optional
+        Restrict the search to this region. **Pass this whenever the dose has
+        been masked**, which predictions from dose-prediction models almost
+        always are. A masked prediction is exactly zero outside its mask, so
+        every voxel just outside the boundary sits next to high dose and is
+        flagged -- and those boundary voxels can outnumber genuine artifacts by
+        fifty to one, which makes the unrestricted count a measure of the mask
+        rather than of the model.
+    erode_region : int, optional
+        Erode ``region`` by this many iterations before searching (default: 0).
+        Use 2 or more with a dose mask: a voxel one step inside the boundary
+        still has out-of-mask neighbours in its window, so its local median is
+        depressed and the comparison is against a partly-empty neighbourhood.
 
     Returns
     -------
@@ -983,6 +998,9 @@ def compute_isolated_extrema(
             f"relative_threshold must be in [0, 1], got {relative_threshold}"
         )
 
+    if erode_region and region is None:
+        raise ValueError("erode_region requires region")
+
     arr = np.asarray(dose.dose_array, dtype=float)
     if arr.size == 0:
         return {
@@ -1004,11 +1022,23 @@ def compute_isolated_extrema(
     # maximum: one hot artifact must not set the scale that decides which
     # voxels are searched.
     peak = float(np.max(local_median))
-    region = (
+    searched = (
         local_median >= relative_threshold * peak
         if peak > 0
         else np.zeros_like(arr, dtype=bool)
     )
+    if region is not None:
+        roi = np.asarray(region, dtype=bool)
+        if roi.shape != arr.shape:
+            raise ValueError(
+                f"region shape {roi.shape} does not match dose shape {arr.shape}"
+            )
+        if erode_region:
+            from scipy.ndimage import binary_erosion
+
+            roi = binary_erosion(roi, iterations=int(erode_region))
+        searched = searched & roi
+    region = searched
     n_evaluated = int(np.count_nonzero(region))
 
     if n_evaluated == 0:

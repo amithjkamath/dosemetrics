@@ -44,6 +44,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where DVH_score previously differed by up to 0.158 Gy per patient.
 
 ### Changed
+- **`compute_isolated_extrema` gains `region` and `erode_region`.** Without a
+  region the function searches the whole volume, which is wrong for the case it
+  was written for: dose *predictions* are almost always masked, a masked
+  prediction is exactly zero outside its mask, and where the mask is irregular an
+  exterior zero sits in a neighbourhood whose median is still high and is
+  flagged. Measured on real dose predictions, the unrestricted count was roughly
+  fifty boundary voxels per patient against about one genuine artifact — the
+  number described the mask, not the model, and inverted the ranking between two
+  architectures. `erode_region` additionally drops the voxels just inside the
+  boundary, whose median window still straddles it.
 - **`Structure` voxel spacing is now optional and defaults to `None`** (was
   `(1.0, 1.0, 1.0)`). A structure is often a mask on a grid defined elsewhere,
   usually by a `Dose`; requiring the caller to restate that grid on every
