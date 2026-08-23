@@ -40,6 +40,13 @@ dependencies = [
     "gpssi>=0.1.2",
     "huggingface_hub>=0.20.0",
     "ipykernel>=6.0.0",
+    # matplotlib 3.8's pyplot imports backend2gui from IPython.core.pylabtools,
+    # which IPython 9 removed. With matplotlib pinned to ~=3.8.2, IPython 9
+    # breaks every notebook that calls %matplotlib inline -- which is all of
+    # them, so the whole documentation test suite fails. uv.lock is not tracked
+    # here, so CI re-resolves on every run and picked up IPython 9 as soon as it
+    # existed. Lift this bound together with the matplotlib pin, not before.
+    "ipython>=8.18,<9",
     "matplotlib~=3.8.2",
     "nbconvert>=7.16.6",
     "nbformat>=5.10.4",

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Pinned `ipython>=8.18,<9`. matplotlib 3.8's `pyplot` imports `backend2gui`
+  from `IPython.core.pylabtools`, which IPython 9 removed, so with
+  `matplotlib~=3.8.2` every notebook calling `%matplotlib inline` failed --
+  taking the whole documentation test suite with it. `uv.lock` is not tracked,
+  so CI re-resolves on each run and picked up IPython 9 as soon as it was
+  released. Lift this bound together with the matplotlib pin.
+
 ## [0.4.1] - 2026-08-16
 
 ### Added
