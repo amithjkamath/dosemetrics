@@ -173,3 +173,69 @@ class TestCompliance(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestEvaluateConstraint(unittest.TestCase):
+    """Tests for the scalar constraint kernel behind check_compliance."""
+
+    def test_max_constraint(self):
+        """A max constraint fails only above the level."""
+        self.assertFalse(dosemetrics.evaluate_constraint(60.0, "max", 54.0)[0])
+        self.assertTrue(dosemetrics.evaluate_constraint(45.0, "max", 54.0)[0])
+        self.assertTrue(
+            dosemetrics.evaluate_constraint(54.0, "max", 54.0)[0],
+            "exactly at the level is compliant",
+        )
+
+    def test_min_constraint(self):
+        """A min constraint fails only below the level."""
+        self.assertFalse(dosemetrics.evaluate_constraint(55.0, "min", 60.0)[0])
+        self.assertTrue(dosemetrics.evaluate_constraint(62.0, "min", 60.0)[0])
+
+    def test_mean_constraint(self):
+        self.assertFalse(dosemetrics.evaluate_constraint(35.0, "mean", 30.0)[0])
+        self.assertTrue(dosemetrics.evaluate_constraint(25.0, "mean", 30.0)[0])
+
+    def test_nmean_constraint(self):
+        """nmean is for targets: the mean must be reached, not stayed under."""
+        self.assertFalse(dosemetrics.evaluate_constraint(55.0, "nmean", 60.0)[0])
+        self.assertTrue(dosemetrics.evaluate_constraint(61.0, "nmean", 60.0)[0])
+
+    def test_reason_is_always_populated(self):
+        for constraint_type in ("max", "min", "mean", "nmean"):
+            for value in (10.0, 100.0):
+                _, reason = dosemetrics.evaluate_constraint(value, constraint_type, 50.0)
+                self.assertTrue(reason.strip())
+
+    def test_unsupported_type_raises(self):
+        with self.assertRaises(ValueError):
+            dosemetrics.evaluate_constraint(50.0, "gEUD", 50.0)
+
+    def test_constraint_metric_mapping(self):
+        self.assertEqual(dosemetrics.constraint_metric("max"), "Max Dose")
+        self.assertEqual(dosemetrics.constraint_metric("min"), "Min Dose")
+        self.assertEqual(dosemetrics.constraint_metric("mean"), "Mean Dose")
+        self.assertEqual(dosemetrics.constraint_metric("nmean"), "Mean Dose")
+        with self.assertRaises(ValueError):
+            dosemetrics.constraint_metric("volume")
+
+    def test_agrees_with_check_compliance(self):
+        """The table path and the scalar path must never disagree."""
+        stats = pd.DataFrame(
+            [
+                {"Structure": "BrainStem", "Mean Dose": 20, "Max Dose": 60, "Min Dose": 5},
+                {"Structure": "Brain", "Mean Dose": 20, "Max Dose": 40, "Min Dose": 5},
+            ]
+        ).set_index("Structure")
+        constraints = dosemetrics.get_default_constraints()
+        table = dosemetrics.check_compliance(stats, constraints)
+
+        for structure in table.index:
+            constraint_type = constraints.loc[structure, "Constraint Type"]
+            value = stats.loc[structure, dosemetrics.constraint_metric(constraint_type)]
+            expected, _ = dosemetrics.evaluate_constraint(
+                value, constraint_type, constraints.loc[structure, "Level"]
+            )
+            self.assertEqual(
+                table.loc[structure, "Compliance"] == "✅ Yes", expected, structure
+            )

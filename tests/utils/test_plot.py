@@ -262,3 +262,56 @@ class TestPlotFunctions(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestPlotDVHBandFromCurves(unittest.TestCase):
+    """Tests for the ensemble band primitive shared with contourmetrics."""
+
+    def setUp(self):
+        self.bins = np.linspace(0, 60, 121)
+        self.curves = np.array(
+            [100.0 * np.exp(-self.bins / scale) for scale in (16.0, 20.0, 24.0)]
+        )
+
+    def tearDown(self):
+        plt.close("all")
+
+    def test_returns_axes(self):
+        ax = plot.plot_dvh_band_from_curves(self.bins, self.curves, label="PTV")
+        self.assertIsInstance(ax, plt.Axes)
+
+    def test_band_and_median_are_drawn(self):
+        ax = plot.plot_dvh_band_from_curves(self.bins, self.curves, label="PTV")
+        self.assertEqual(len(ax.collections), 1, "one filled band")
+        self.assertEqual(len(ax.lines), 1, "one median line")
+
+    def test_individual_curves_can_be_shown(self):
+        ax = plot.plot_dvh_band_from_curves(
+            self.bins, self.curves, show_individual=True, show_median=False
+        )
+        self.assertEqual(len(ax.lines), len(self.curves))
+
+    def test_envelope_adds_two_lines(self):
+        ax = plot.plot_dvh_band_from_curves(
+            self.bins, self.curves, show_envelope=True, show_median=False
+        )
+        self.assertEqual(len(ax.lines), 2)
+
+    def test_single_curve_is_accepted(self):
+        ax = plot.plot_dvh_band_from_curves(self.bins, self.curves[0])
+        self.assertIsInstance(ax, plt.Axes)
+
+    def test_mismatched_axis_raises(self):
+        with self.assertRaises(ValueError):
+            plot.plot_dvh_band_from_curves(self.bins, self.curves[:, :-5])
+
+    def test_draws_onto_a_supplied_axis(self):
+        _, ax = plt.subplots()
+        returned = plot.plot_dvh_band_from_curves(self.bins, self.curves, ax=ax)
+        self.assertIs(returned, ax)
+
+    def test_absolute_volume_labelling(self):
+        ax = plot.plot_dvh_band_from_curves(
+            self.bins, self.curves, relative_volume=False
+        )
+        self.assertIn("cc", ax.get_ylabel())

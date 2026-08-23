@@ -384,36 +384,132 @@ def plot_dvh_band(
         interp_volumes = np.interp(common_doses, dose_bins, volumes)
         interpolated_dvhs.append(interp_volumes)
 
-    dvh_array = np.array(interpolated_dvhs)
+    return plot_dvh_band_from_curves(
+        common_doses,
+        np.array(interpolated_dvhs),
+        relative_volume=relative_volume,
+        percentiles=percentiles,
+        show_median=show_median,
+        ax=ax,
+        color=color,
+        label=label or structure_name,
+        band_label=f"{label or structure_name} (IQR)",
+        median_label=f"{label or structure_name} (median)",
+    )
 
-    # Compute statistics
-    median_dvh = np.median(dvh_array, axis=0)
-    lower_percentile = np.percentile(dvh_array, percentiles[0], axis=0)
-    upper_percentile = np.percentile(dvh_array, percentiles[1], axis=0)
 
-    # Plot band
+def plot_dvh_band_from_curves(
+    dose_bins: np.ndarray,
+    dvh_curves: np.ndarray,
+    relative_volume: bool = True,
+    percentiles: Tuple[float, float] = (25, 75),
+    show_median: bool = True,
+    show_individual: bool = False,
+    show_envelope: bool = False,
+    ax: Optional[plt.Axes] = None,
+    color: Optional[str] = None,
+    label: Optional[str] = None,
+    band_label: Optional[str] = None,
+    median_label: Optional[str] = None,
+) -> plt.Axes:
+    """
+    Plot a DVH band from an already-computed ensemble of DVH curves.
+
+    This is the plotting primitive behind :func:`plot_dvh_band`. It takes the
+    curves directly rather than a dataset, so it can be reused for any ensemble
+    of DVHs sharing one dose axis -- across subjects, across plans, or across a
+    family of contour variations of a single structure.
+
+    Parameters
+    ----------
+    dose_bins : np.ndarray
+        Shared dose axis of shape (n_bins,), in Gy.
+    dvh_curves : np.ndarray
+        Ensemble of shape (n_curves, n_bins). Volume in % or cc.
+    relative_volume : bool
+        Label and scale the y axis as relative volume (%) rather than cc.
+    percentiles : Tuple[float, float]
+        Lower and upper percentiles bounding the shaded band.
+    show_median : bool
+        Whether to draw the median curve.
+    show_individual : bool
+        Whether to draw every member curve faintly behind the band.
+    show_envelope : bool
+        Whether to outline the full min/max envelope of the ensemble.
+    ax : plt.Axes, optional
+        Axis to plot on
+    color : str, optional
+        Color for the band
+    label : str, optional
+        Base name used for legend entries when band/median labels are omitted.
+    band_label : str, optional
+        Explicit legend label for the shaded band.
+    median_label : str, optional
+        Explicit legend label for the median curve.
+
+    Returns
+    -------
+    ax : plt.Axes
+
+    Examples
+    --------
+    >>> bins = np.linspace(0, 60, 601)
+    >>> curves = np.array([100 * np.exp(-bins / s) for s in (18, 20, 22)])
+    >>> ax = plot_dvh_band_from_curves(bins, curves, label="BrainStem")
+    """
+    if ax is None:
+        _, ax = plt.subplots(figsize=(10, 7))
+
+    dose_bins = np.asarray(dose_bins, dtype=float)
+    dvh_curves = np.atleast_2d(np.asarray(dvh_curves, dtype=float))
+    if dvh_curves.shape[1] != dose_bins.shape[0]:
+        raise ValueError(
+            f"dvh_curves has {dvh_curves.shape[1]} bins but dose_bins has "
+            f"{dose_bins.shape[0]}; they must share one dose axis"
+        )
+
     if color is None:
         color = DEFAULT_COLORS[0]
+    name = label or "DVH"
 
+    if show_individual:
+        for curve in dvh_curves:
+            ax.plot(dose_bins, curve, alpha=0.1, color=color, linewidth=1)
+
+    lower = np.percentile(dvh_curves, percentiles[0], axis=0)
+    upper = np.percentile(dvh_curves, percentiles[1], axis=0)
     ax.fill_between(
-        common_doses,
-        lower_percentile,
-        upper_percentile,
+        dose_bins,
+        lower,
+        upper,
         alpha=0.3,
         color=color,
-        label=f"{label or structure_name} (IQR)",
+        label=band_label
+        or f"{name} ({percentiles[0]:g}-{percentiles[1]:g} percentile)",
     )
+
+    if show_envelope:
+        ax.plot(
+            dose_bins, dvh_curves.min(axis=0), color=color, linewidth=1, linestyle=":"
+        )
+        ax.plot(
+            dose_bins,
+            dvh_curves.max(axis=0),
+            color=color,
+            linewidth=1,
+            linestyle=":",
+            label=f"{name} (min-max)",
+        )
 
     if show_median:
         ax.plot(
-            common_doses,
-            median_dvh,
+            dose_bins,
+            np.median(dvh_curves, axis=0),
             color=color,
             linewidth=2,
-            label=f"{label or structure_name} (median)",
+            label=median_label or f"{name} (median)",
         )
 
-    # Format
     ax.set_xlabel("Dose (Gy)", fontsize=12)
     if relative_volume:
         ax.set_ylabel("Volume (%)", fontsize=12)

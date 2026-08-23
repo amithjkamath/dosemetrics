@@ -7,6 +7,9 @@ from .compliance import (
     get_custom_constraints,
     get_default_constraints,
     check_compliance,
+    constraint_metric,
+    evaluate_constraint,
+    parse_dose_at_volume_cc,
 )
 
 # Batch processing
@@ -39,6 +42,7 @@ from .plot import (
     plot_subject_dvhs,
     plot_dvh_comparison,
     plot_dvh_band,
+    plot_dvh_band_from_curves,
     plot_metric_boxplot,
     plot_metric_comparison,
     plot_dose_slice,
@@ -59,6 +63,9 @@ __all__ = [
     "get_custom_constraints",
     "get_default_constraints",
     "check_compliance",
+    "constraint_metric",
+    "evaluate_constraint",
+    "parse_dose_at_volume_cc",
     # Batch processing
     "load_dataset",
     "load_multiple_doses",
@@ -82,6 +89,7 @@ __all__ = [
     "plot_subject_dvhs",
     "plot_dvh_comparison",
     "plot_dvh_band",
+    "plot_dvh_band_from_curves",
     "plot_metric_boxplot",
     "plot_metric_comparison",
     "plot_dose_slice",

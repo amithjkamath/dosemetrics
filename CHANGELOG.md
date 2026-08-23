@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-08-16
+
+### Added
+- **`utils.compliance.evaluate_constraint()`**: scalar constraint evaluation
+  (value, constraint type, level) -> (compliant, reason). Exposed so callers
+  testing many hypothetical dose values against one constraint -- for example a
+  family of DVH curves derived from contour variations -- reuse the constraint
+  semantics instead of re-implementing them.
+- **`utils.compliance.constraint_metric()`**: maps a constraint type to the
+  dose-statistic column it is evaluated against.
+- **`utils.plot.plot_dvh_band_from_curves()`**: draws a DVH band from an
+  already-computed ensemble of curves on a shared dose axis, with optional
+  min/max envelope. Works for any ensemble, not just multi-subject datasets.
+
+### Changed
+- `check_compliance()` now delegates to `evaluate_constraint()`. Output columns,
+  compliance markers and reason strings are unchanged.
+- `plot_dvh_band()` now delegates its drawing to `plot_dvh_band_from_curves()`
+  after collecting and interpolating the per-subject DVHs. Behaviour unchanged.
+
 ## [0.3.0] - 2025-12-28
 
 ### Added
