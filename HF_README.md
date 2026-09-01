@@ -5,7 +5,7 @@ colorFrom: blue
 colorTo: green
 sdk: docker
 pinned: false
-license: cc-by-nc-sa-4.0
+license: apache-2.0
 ---
 
 # DoseMetrics - Radiotherapy Dose Analysis
@@ -68,4 +68,4 @@ If you use DoseMetrics in your research, please cite:
 
 ## License
 
-This project is licensed under CC BY-NC-SA 4.0. See the LICENSE file for details.
+This project is licensed under the Apache License, Version 2.0. See the LICENSE and NOTICE files for details.

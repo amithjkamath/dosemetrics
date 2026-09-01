@@ -4,7 +4,7 @@
 [![PyPI version](https://badge.fury.io/py/dosemetrics.svg)](https://badge.fury.io/py/dosemetrics)
 [![Tests](https://github.com/amith-kamath/dosemetrics/actions/workflows/tests.yml/badge.svg)](https://github.com/amith-kamath/dosemetrics/actions/workflows/tests.yml)
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://amith-kamath.github.io/dosemetrics/)
-[![License](https://img.shields.io/badge/license-CC%20BY--SA--NC%204.0-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 
 DoseMetrics 0.4.0 is a Python library for radiotherapy dose analysis. It provides typed containers for dose distributions and structures, NIfTI and DICOM-RT I/O, DVH and plan-quality metrics, dose and geometry comparisons, gamma analysis, batch utilities, and publication-ready Matplotlib plots.
 
@@ -112,4 +112,4 @@ The documentation notebooks use the public `contouraid/dosemetrics-data` dataset
 
 ## License
 
-Licensed under the Creative Commons Attribution-ShareAlike-NonCommercial 4.0 International License. See [LICENSE](LICENSE). Commercial use requires explicit written permission from the copyright holder.
+Licensed under the [Apache License, Version 2.0](LICENSE). Copyright 2023-2026 Amith Kamath and ContourAId. Redistribution must retain the notices in [NOTICE](NOTICE).

@@ -1,25 +1,43 @@
-Creative Commons Attribution-ShareAlike-NonCommercial 4.0 International License
+# License
 
-This work is licensed under the Creative Commons Attribution-ShareAlike-NonCommercial 4.0 International License.
+DoseMetrics is licensed under the **Apache License, Version 2.0**.
 
-Copyright (c) 2025 Amith Kamath
+Copyright 2023-2026 Amith Kamath and ContourAId.
 
-You are free to:
-- Share — copy and redistribute the material in any medium or format
-- Adapt — remix, transform, and build upon the material
+```
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-Under the following terms:
-- Attribution — You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
-- ShareAlike — If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
-- NonCommercial — You may not use the material for commercial purposes without explicit written permission from the copyright holder.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-No additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
 
-Notices:
-You do not have to comply with the license for elements of the material in the public domain or where your use is permitted by an applicable exception or limitation.
+## What this permits
 
-No warranties are given. The license may not give you all of the permissions necessary for your intended use. For example, other rights such as publicity, privacy, or moral rights may limit how you use the material.
+Apache-2.0 is a permissive licence. You may use, modify, and redistribute
+DoseMetrics, including in commercial and closed-source products, provided you:
 
-For commercial licensing, please contact: 342169736+amith-kamath@users.noreply.github.com
+- retain the copyright notice, this licence, and the `NOTICE` file contents in
+  redistributed copies;
+- state significant changes you made to the files; and
+- do not use ContourAId trademarks without permission.
 
-Full license text available at: https://creativecommons.org/licenses/by-sa-nc/4.0/
+It also grants an express patent licence from contributors, which the previous
+Creative Commons licence did not.
+
+## Why it changed
+
+DoseMetrics was previously released under CC BY-NC-SA 4.0. That licence
+prohibited commercial use, applied a viral ShareAlike term to anything derived
+from it, and — being written for creative works rather than software — carried
+no patent grant. It made DoseMetrics the one package in the ContourAId family
+that could not be used downstream. Apache-2.0 removes all three problems.
+
+The full text is in [LICENSE](https://github.com/amith-kamath/dosemetrics/blob/main/LICENSE);
+attribution requirements are in [NOTICE](https://github.com/amith-kamath/dosemetrics/blob/main/NOTICE).

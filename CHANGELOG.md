@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Relicensed from CC BY-NC-SA 4.0 to Apache License 2.0.** The Creative
+  Commons licence prohibited commercial use, applied a viral ShareAlike term to
+  derivative works, and carried no patent grant -- it was written for creative
+  works, not software. It made DoseMetrics the only package in the ContourAId
+  family that downstream products could not use. Apache-2.0 is permissive,
+  grants patent rights expressly, and requires only that the copyright notice,
+  licence and `NOTICE` travel with redistributed copies. Added `NOTICE`, and
+  declared the licence as a PEP 639 SPDX expression (`License-Expression:
+  Apache-2.0`), which raises the build requirement to `setuptools>=77.0.3`.
+  Note that releases up to and including 0.4.1 remain published under the
+  previous licence; the change applies from the next release onward.
+
 ### Fixed
 - Pinned `ipython>=8.18,<9`. matplotlib 3.8's `pyplot` imports `backend2gui`
   from `IPython.core.pylabtools`, which IPython 9 removed, so with
