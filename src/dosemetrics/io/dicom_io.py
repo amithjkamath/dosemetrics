@@ -243,6 +243,14 @@ def _generate_mask_from_contours(
     """
     Generate a binary mask from contour points.
 
+    Each grid slice takes the contours of the nearest contour plane, provided that
+    plane lies within half a contour spacing of the slice. A grid finer than the
+    contours (a 1.6 mm dose grid under 3.2 mm CT contours, say) therefore gets the
+    structure on every slice, and a gap between contour planes (an organ contoured
+    above and below a target) stays empty. The contours of one plane combine by the
+    even-odd rule: a contour inside another is a hole, as treatment planning systems
+    export them, and a separate one is an island.
+
     Args:
         contours: List of contour arrays (each Nx3 with (x, y, z) points)
         shape: (depth, height, width) of output mask
@@ -253,43 +261,51 @@ def _generate_mask_from_contours(
         Binary mask as boolean numpy array with given shape
     """
     from skimage.draw import polygon
-    
+
     mask = np.zeros(shape, dtype=bool)
-    
-    # Group contours by z-coordinate (slice)
-    slice_contours = {}
+
+    # Group contours by plane (z should be constant within one contour)
+    planes: Dict[float, List[np.ndarray]] = {}
     for contour in contours:
         if len(contour) < 3:  # Need at least 3 points for a polygon
             continue
-        
-        # Get z-coordinate (should be constant for a single contour)
-        z_coord = contour[0, 2]
-        
-        # Convert z coordinate to slice index
-        slice_idx = int(round((z_coord - origin[2]) / spacing[2]))
-        
-        if 0 <= slice_idx < shape[0]:
-            if slice_idx not in slice_contours:
-                slice_contours[slice_idx] = []
-            slice_contours[slice_idx].append(contour)
-    
-    # Fill each slice
-    for slice_idx, contour_list in slice_contours.items():
-        for contour in contour_list:
+        planes.setdefault(round(float(contour[0, 2]), 3), []).append(contour)
+    if not planes:
+        return mask
+
+    plane_z = np.array(sorted(planes))
+    if len(plane_z) > 1:
+        half_spacing = 0.5 * float(np.median(np.diff(plane_z)))
+    else:
+        half_spacing = 0.5 * spacing[2]
+
+    tolerance = 1e-3  # mm; settles ties that rounding would otherwise settle at random
+    for slice_idx in range(shape[0]):
+        z_coord = origin[2] + slice_idx * spacing[2]
+        # Each plane stands for (z - half, z + half]: a slice exactly halfway belongs
+        # to the plane below it, so the structure is as long as its planes, no longer
+        candidates = plane_z[
+            (plane_z >= z_coord - half_spacing - tolerance)
+            & (plane_z < z_coord + half_spacing - tolerance)
+        ]
+        if candidates.size == 0:
+            continue
+        nearest = candidates[np.argmin(np.abs(candidates - z_coord))]
+        plane = np.zeros(shape[1:], dtype=bool)
+        for contour in planes[nearest]:
             # Convert physical coordinates to pixel coordinates
             cols = (contour[:, 0] - origin[0]) / spacing[0]
             rows = (contour[:, 1] - origin[1]) / spacing[1]
-            
-            # Fill polygon
             try:
                 rr, cc = polygon(rows, cols, shape[1:])
-                # Ensure indices are within bounds
-                valid_idx = (rr >= 0) & (rr < shape[1]) & (cc >= 0) & (cc < shape[2])
-                mask[slice_idx, rr[valid_idx], cc[valid_idx]] = True
             except Exception:
                 # Skip invalid contours
                 continue
-    
+            filled = np.zeros(shape[1:], dtype=bool)
+            filled[rr, cc] = True
+            plane ^= filled
+        mask[slice_idx] = plane
+
     return mask
 
 
