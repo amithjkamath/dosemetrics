@@ -80,6 +80,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `interpolate=True`. Verified against an external implementation on 60
   patient-plans: dose_score and DVH_score now agree to floating-point epsilon
   where DVH_score previously differed by up to 0.158 Gy per patient.
+- **RTSTRUCT masks on a grid finer than the contours lost every other slice.**
+  `read_dicom_rtstruct` placed each contour on the one grid slice nearest to it,
+  so a dose grid at 1.635 mm under CT contours every 3.27 mm (Eclipse exports in
+  the TCIA head-and-neck data) got the structure on half its slices: volumes
+  halved and dose metrics sampled half the organ. Each grid slice now takes the
+  contours of the nearest contour plane within half a plane spacing, so a
+  structure is as long as its planes and a gap between planes (an organ contoured
+  above and below a target) stays empty. Ties are settled with a 1 µm tolerance:
+  without it, rounding in `GridFrameOffsetVector` (1.6349999 mm) dropped the slices
+  that lie exactly halfway between two planes.
+- **RTSTRUCT holes were filled.** Contours of one ROI on one plane were OR-ed, but
+  treatment planning systems export a hole as a contour inside another. They now
+  combine by the even-odd rule. On 30 TCIA head-and-neck plans, against
+  dicompyler-core on the same files, volumes of organs and targets now agree to
+  +0.1% ± 2.3% (mean ± SD), against -0.9% ± 13.8% before, with 1 of 622 off by more
+  than 20% instead of 51. A PTV with holes read as 240 cc instead of 171 cc, with
+  D95 51.8 Gy instead of 59.2 Gy.
 - Pinned `ipython>=8.18,<9`. matplotlib 3.8's `pyplot` imports `backend2gui`
   from `IPython.core.pylabtools`, which IPython 9 removed, so with
   `matplotlib~=3.8.2` every notebook calling `%matplotlib inline` failed --
