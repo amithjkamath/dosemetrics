@@ -7,7 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Error-tail metrics** in `metrics.dose_comparison`, for the localized errors a
+  mean cannot see. A single voxel wrong by 60 Gy in a 128³ volume moves mean
+  absolute error by under 0.01 Gy, so a model can improve every mean-based score
+  while leaving artifacts that are obvious on a dose display.
+  - `compare_max_error()`: largest absolute dose difference.
+  - `compare_error_percentile()`: a chosen percentile of absolute error;
+    `percentile=100` reproduces `compare_max_error()`.
+  - `compare_tail_error()`: mean of the worst `fraction` of absolute errors, i.e.
+    the conditional value at risk (superquantile) at level `1 - fraction`.
+    `fraction=1.0` reproduces `compare_mae()` exactly. More stable than the
+    maximum, which is a single order statistic.
+  - `compute_isolated_extrema()`: reference-free count of voxels deviating from
+    their local median by more than a threshold, separated into `n_dropout` and
+    `n_hotspot`. Detects salt-and-pepper artifacts in a distribution whose
+    agreement with a reference is otherwise good. Both the search region and the
+    dose scale are taken from the median-filtered volume, never from raw values —
+    a dropout voxel is far below its surroundings, so thresholding on its own
+    value would exclude it from the region it corrupts.
+- 31 tests in `tests/metrics/test_tail_error.py`, including that a single bad
+  voxel moves the tail metrics while leaving MAE effectively unchanged.
+- Documentation: an "Error tail and localized artifacts" section in the
+  quality-metrics user guide, and four rows in the classification table.
+
 ### Changed
+- **`compute_isolated_extrema` gains `region` and `erode_region`.** Without a
+  region the function searches the whole volume, which is wrong for the case it
+  was written for: dose *predictions* are almost always masked, a masked
+  prediction is exactly zero outside its mask, and where the mask is irregular an
+  exterior zero sits in a neighbourhood whose median is still high and is
+  flagged. Measured on real dose predictions, the unrestricted count was roughly
+  fifty boundary voxels per patient against about one genuine artifact — the
+  number described the mask, not the model, and inverted the ranking between two
+  architectures. `erode_region` additionally drops the voxels just inside the
+  boundary, whose median window still straddles it.
+- **`Structure` voxel spacing is now optional and defaults to `None`** (was
+  `(1.0, 1.0, 1.0)`). A structure is often a mask on a grid defined elsewhere,
+  usually by a `Dose`; requiring the caller to restate that grid on every
+  structure was friction, and the old default was wrong in two ways. Pairing a
+  default-spacing structure with a real dose raised a compatibility error that
+  said nothing actionable, and any metric reading `structure.spacing` computed a
+  volume on a 1 mm grid — silently incorrect rather than failing.
+  - A structure with `spacing=None` is compatible with any dose of matching
+    shape; shape is still enforced, and explicitly stated spacing is still
+    checked exactly as before.
+  - `compute_dose_at_volume_cc` now takes the grid from the `Dose`, which is what
+    is being sampled, rather than from the structure.
+  - `Structure.volume_cc()` raises a clear error when spacing is unknown instead
+    of returning a 1 mm-grid volume.
+  - Callers that passed spacing explicitly are unaffected.
 - **Relicensed from CC BY-NC-SA 4.0 to Apache License 2.0.** The Creative
   Commons licence prohibited commercial use, applied a viral ShareAlike term to
   derivative works, and carried no patent grant -- it was written for creative
@@ -21,6 +70,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   previous licence; the change applies from the next release onward.
 
 ### Fixed
+- **`compare_dvh_score` did not reproduce OpenKBP DVH scores.** It is documented
+  as "the complete OpenKBP DVH score", but its D0.1cc took the n-th hottest voxel
+  exactly, whereas the challenge evaluator clamps to at least one voxel and takes
+  a linearly interpolated percentile. On a 442-voxel brainstem the two disagree
+  by about 1 Gy, enough to shift a published DVH score by ~0.8%.
+  `compute_dose_at_volume_cc` gains an `interpolate` flag (default `False`, so
+  existing callers are unaffected) and `compare_dvh_score` now uses
+  `interpolate=True`. Verified against an external implementation on 60
+  patient-plans: dose_score and DVH_score now agree to floating-point epsilon
+  where DVH_score previously differed by up to 0.158 Gy per patient.
 - Pinned `ipython>=8.18,<9`. matplotlib 3.8's `pyplot` imports `backend2gui`
   from `IPython.core.pylabtools`, which IPython 9 removed, so with
   `matplotlib~=3.8.2` every notebook calling `%matplotlib inline` failed --

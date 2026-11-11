@@ -5,6 +5,14 @@ This module provides image-based metrics for comparing 3D dose distributions.
 All ``compare_*`` functions accept ``reference`` before ``evaluated``;
 ``compute_*`` functions characterize one dose distribution.
 
+Alongside the mean-based summaries (:func:`compare_mae`, :func:`compare_mse`)
+the module provides tail descriptors -- :func:`compare_max_error`,
+:func:`compare_error_percentile`, :func:`compare_tail_error` -- and the
+reference-free :func:`compute_isolated_extrema`. A mean over millions of voxels
+is insensitive to a small number of badly wrong ones, so a model can improve a
+mean while leaving, or introducing, localized errors that a dose display makes
+obvious.
+
 Future Implementation TODOs:
     - Structural Similarity Index (SSIM) for dose volumes
     - Mean Squared Error (MSE) and variants
@@ -726,6 +734,335 @@ def compare_normalized_mae(
     return mae
 
 
+
+def compare_max_error(
+    reference: Dose, evaluated: Dose, structure: Optional[Structure] = None
+) -> float:
+    """
+    Compute the maximum absolute dose difference between two distributions.
+
+    Parameters
+    ----------
+    reference : Dose
+        Reference dose.
+    evaluated : Dose
+        Evaluated dose.
+    structure : Structure, optional
+        If provided, evaluate only within structure.
+
+    Returns
+    -------
+    max_error : float
+        Largest absolute dose difference in Gy.
+
+    Notes
+    -----
+    Mean-based summaries such as :func:`compare_mae` are insensitive to a small
+    number of large deviations: a handful of badly wrong voxels in a volume of
+    millions moves the mean by almost nothing. The maximum is the extreme
+    complement, and is worth reporting alongside a mean because a model can
+    improve one while degrading the other.
+
+    Being a single order statistic, it is by nature the noisiest tail summary.
+    :func:`compare_tail_error` and :func:`compare_error_percentile` are more
+    stable descriptions of the same tail.
+
+    Raises
+    ------
+    ValueError
+        If dose distributions have incompatible shapes.
+    """
+    arr1 = reference.dose_array
+    arr2 = evaluated.dose_array
+
+    if arr1.shape != arr2.shape:
+        raise ValueError(f"Dose shapes must match: {arr1.shape} vs {arr2.shape}")
+
+    if structure is not None:
+        mask = structure.mask
+        arr1 = arr1[mask]
+        arr2 = arr2[mask]
+
+    if arr1.size == 0:
+        return float("nan")
+
+    return float(np.max(np.abs(arr1 - arr2)))
+
+
+def compare_error_percentile(
+    reference: Dose,
+    evaluated: Dose,
+    percentile: float = 99.0,
+    structure: Optional[Structure] = None,
+) -> float:
+    """
+    Compute a percentile of the absolute dose difference.
+
+    Parameters
+    ----------
+    reference : Dose
+        Reference dose.
+    evaluated : Dose
+        Evaluated dose.
+    percentile : float, optional
+        Percentile of the absolute-error distribution, in [0, 100]
+        (default: 99.0).
+    structure : Structure, optional
+        If provided, evaluate only within structure.
+
+    Returns
+    -------
+    error : float
+        The requested percentile of absolute error in Gy.
+
+    Notes
+    -----
+    A percentile trades the instability of the maximum for a defined position
+    in the error distribution. ``percentile=50`` is the median absolute error,
+    ``percentile=100`` reproduces :func:`compare_max_error`.
+
+    Raises
+    ------
+    ValueError
+        If dose distributions have incompatible shapes, or ``percentile`` is
+        outside [0, 100].
+    """
+    if not 0.0 <= percentile <= 100.0:
+        raise ValueError(f"percentile must be in [0, 100], got {percentile}")
+
+    arr1 = reference.dose_array
+    arr2 = evaluated.dose_array
+
+    if arr1.shape != arr2.shape:
+        raise ValueError(f"Dose shapes must match: {arr1.shape} vs {arr2.shape}")
+
+    if structure is not None:
+        mask = structure.mask
+        arr1 = arr1[mask]
+        arr2 = arr2[mask]
+
+    if arr1.size == 0:
+        return float("nan")
+
+    return float(np.percentile(np.abs(arr1 - arr2), percentile))
+
+
+def compare_tail_error(
+    reference: Dose,
+    evaluated: Dose,
+    fraction: float = 0.1,
+    structure: Optional[Structure] = None,
+) -> float:
+    """
+    Compute the mean of the worst ``fraction`` of absolute dose differences.
+
+    Parameters
+    ----------
+    reference : Dose
+        Reference dose.
+    evaluated : Dose
+        Evaluated dose.
+    fraction : float, optional
+        Fraction of the worst errors to average, in (0, 1] (default: 0.1,
+        i.e. the worst 10%).
+    structure : Structure, optional
+        If provided, evaluate only within structure.
+
+    Returns
+    -------
+    tail_error : float
+        Mean absolute error over the worst ``fraction`` of voxels, in Gy.
+
+    Notes
+    -----
+    This is the conditional value at risk (CVaR, also called the superquantile
+    or expected shortfall) of the absolute-error distribution at level
+    ``1 - fraction``. It sits between :func:`compare_mae` and
+    :func:`compare_max_error`: it describes the tail, but averages over enough
+    voxels to be stable, whereas the maximum is a single order statistic.
+
+    The quantity is monotone non-increasing in ``fraction``, and
+    ``fraction=1.0`` reproduces :func:`compare_mae` exactly.
+
+    Raises
+    ------
+    ValueError
+        If dose distributions have incompatible shapes, or ``fraction`` is
+        outside (0, 1].
+    """
+    if not 0.0 < fraction <= 1.0:
+        raise ValueError(f"fraction must be in (0, 1], got {fraction}")
+
+    arr1 = reference.dose_array
+    arr2 = evaluated.dose_array
+
+    if arr1.shape != arr2.shape:
+        raise ValueError(f"Dose shapes must match: {arr1.shape} vs {arr2.shape}")
+
+    if structure is not None:
+        mask = structure.mask
+        arr1 = arr1[mask]
+        arr2 = arr2[mask]
+
+    if arr1.size == 0:
+        return float("nan")
+
+    errors = np.abs(arr1 - arr2).ravel()
+    k = max(1, int(round(fraction * errors.size)))
+    # np.partition puts the k largest at the end without a full sort.
+    worst = np.partition(errors, errors.size - k)[errors.size - k:]
+    return float(np.mean(worst))
+
+
+def compute_isolated_extrema(
+    dose: Dose,
+    relative_threshold: float = 0.5,
+    deviation: float = 5.0,
+    neighborhood_size: int = 3,
+    region: Optional[np.ndarray] = None,
+    erode_region: int = 0,
+) -> Dict[str, float]:
+    """
+    Count voxels that deviate sharply from their immediate neighbourhood.
+
+    Parameters
+    ----------
+    dose : Dose
+        Dose distribution to characterize.
+    relative_threshold : float, optional
+        Restrict the search to voxels at or above this fraction of the maximum
+        dose (default: 0.5). Speckle in the low-dose bath is rarely clinically
+        interesting; speckle inside the treated volume is.
+    deviation : float, optional
+        Minimum difference from the local median, in Gy, for a voxel to count
+        (default: 5.0).
+    neighborhood_size : int, optional
+        Edge length of the cubic median-filter window (default: 3).
+    region : ndarray of bool, optional
+        Restrict the search to this region. **Pass this whenever the dose has
+        been masked**, which predictions from dose-prediction models almost
+        always are. A masked prediction is exactly zero outside its mask, so
+        every voxel just outside the boundary sits next to high dose and is
+        flagged -- and those boundary voxels can outnumber genuine artifacts by
+        fifty to one, which makes the unrestricted count a measure of the mask
+        rather than of the model.
+    erode_region : int, optional
+        Erode ``region`` by this many iterations before searching (default: 0).
+        Use 2 or more with a dose mask: a voxel one step inside the boundary
+        still has out-of-mask neighbours in its window, so its local median is
+        depressed and the comparison is against a partly-empty neighbourhood.
+
+    Returns
+    -------
+    counts : dict
+        ``n_dropout`` -- voxels far *below* their local median;
+        ``n_hotspot`` -- voxels far *above* it;
+        ``n_isolated`` -- their sum;
+        ``fraction_isolated`` -- ``n_isolated`` as a fraction of the voxels
+        searched;
+        ``n_evaluated`` -- how many voxels were searched.
+
+    Notes
+    -----
+    A dose distribution is physically smooth at the voxel scale, so a voxel
+    that differs sharply from its own neighbourhood is an artifact rather than
+    structure. Such salt-and-pepper voxels are invisible to every mean-based
+    metric -- a few dozen voxels in a volume of millions change MAE, DVH
+    metrics and gamma pass rates by essentially nothing -- yet they are
+    immediately visible in a dose display and can misrepresent a maximum dose.
+
+    This is a reference-free descriptor: it asks whether a distribution is
+    locally self-consistent, not whether it matches a reference. That matters
+    because the artifact can be present in a prediction whose agreement with
+    the reference is otherwise good.
+
+    Comparing counts across dose distributions is only meaningful when they
+    share a voxel grid and the same ``deviation`` threshold, since both the
+    neighbourhood and the threshold are defined in absolute terms.
+
+    Raises
+    ------
+    ValueError
+        If ``neighborhood_size`` is not an odd integer of at least 3, or
+        ``relative_threshold`` is outside [0, 1].
+    """
+    from scipy.ndimage import median_filter
+
+    if neighborhood_size < 3 or neighborhood_size % 2 == 0:
+        raise ValueError(
+            f"neighborhood_size must be an odd integer >= 3, "
+            f"got {neighborhood_size}"
+        )
+    if not 0.0 <= relative_threshold <= 1.0:
+        raise ValueError(
+            f"relative_threshold must be in [0, 1], got {relative_threshold}"
+        )
+
+    if erode_region and region is None:
+        raise ValueError("erode_region requires region")
+
+    arr = np.asarray(dose.dose_array, dtype=float)
+    if arr.size == 0:
+        return {
+            "n_dropout": 0,
+            "n_hotspot": 0,
+            "n_isolated": 0,
+            "fraction_isolated": float("nan"),
+            "n_evaluated": 0,
+        }
+
+    local_median = median_filter(arr, size=neighborhood_size, mode="nearest")
+    residual = arr - local_median
+
+    # The search region and the dose scale are both taken from the *local
+    # median*, never from the raw values. A dropout voxel is by definition far
+    # below its surroundings, so thresholding on its own value would exclude it
+    # from the region it sits in -- the metric would silently miss exactly what
+    # it is meant to find. For the same reason the peak is the median-filtered
+    # maximum: one hot artifact must not set the scale that decides which
+    # voxels are searched.
+    peak = float(np.max(local_median))
+    searched = (
+        local_median >= relative_threshold * peak
+        if peak > 0
+        else np.zeros_like(arr, dtype=bool)
+    )
+    if region is not None:
+        roi = np.asarray(region, dtype=bool)
+        if roi.shape != arr.shape:
+            raise ValueError(
+                f"region shape {roi.shape} does not match dose shape {arr.shape}"
+            )
+        if erode_region:
+            from scipy.ndimage import binary_erosion
+
+            roi = binary_erosion(roi, iterations=int(erode_region))
+        searched = searched & roi
+    region = searched
+    n_evaluated = int(np.count_nonzero(region))
+
+    if n_evaluated == 0:
+        return {
+            "n_dropout": 0,
+            "n_hotspot": 0,
+            "n_isolated": 0,
+            "fraction_isolated": float("nan"),
+            "n_evaluated": 0,
+        }
+
+    n_dropout = int(np.count_nonzero(region & (residual <= -deviation)))
+    n_hotspot = int(np.count_nonzero(region & (residual >= deviation)))
+    n_isolated = n_dropout + n_hotspot
+
+    return {
+        "n_dropout": n_dropout,
+        "n_hotspot": n_hotspot,
+        "n_isolated": n_isolated,
+        "fraction_isolated": float(n_isolated / n_evaluated),
+        "n_evaluated": n_evaluated,
+    }
+
+
 __all__ = [
     "compare_ssim",
     "compare_mse",
@@ -738,4 +1075,8 @@ __all__ = [
     "compute_3d_dose_gradient",
     "compute_variance_of_laplacian",
     "compare_normalized_mae",
+    "compare_max_error",
+    "compare_error_percentile",
+    "compare_tail_error",
+    "compute_isolated_extrema",
 ]

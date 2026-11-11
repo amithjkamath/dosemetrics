@@ -164,7 +164,7 @@ def compute_dose_at_volume(
 
 
 def compute_dose_at_volume_cc(
-    dose: Dose, structure: Structure, volume_cc: float
+    dose: Dose, structure: Structure, volume_cc: float, interpolate: bool = False
 ) -> float:
     """
     Compute dose received by a given absolute volume in cc.
@@ -175,6 +175,17 @@ def compute_dose_at_volume_cc(
         dose: Dose distribution object
         structure: Structure to analyze
         volume_cc: Absolute volume in cubic centimeters
+        interpolate: If True, use the OpenKBP convention -- clamp to at least
+            one voxel and take a linearly interpolated percentile. If False
+            (default), return the exact dose of the n-th hottest voxel.
+
+            The two disagree whenever the requested volume is a few voxels: the
+            order statistic returns the n-th hottest value itself, while the
+            percentile interpolates between neighbouring order statistics and
+            lands lower. For a 442-voxel brainstem on a 33.5 mm³ grid the
+            difference is about 1 Gy. Use ``interpolate=True`` to reproduce
+            numbers from the OpenKBP challenge evaluator, which is what
+            :func:`compare_dvh_score` does.
 
     Returns:
         Dose in Gy received by the specified volume
@@ -189,9 +200,21 @@ def compute_dose_at_volume_cc(
     if len(dose_values) == 0:
         return 0.0
 
-    # Convert cc to number of voxels
-    voxel_volume_cc = np.prod(structure.spacing) / 1000.0  # mm³ to cc
+    # Convert cc to number of voxels. The grid comes from the dose, not the
+    # structure: the dose is what is being sampled, the two are required to
+    # agree wherever the structure states a grid, and the structure may state
+    # none at all.
+    voxel_volume_cc = np.prod(dose.spacing) / 1000.0  # mm³ to cc
     num_voxels = int(np.round(volume_cc / voxel_volume_cc))
+
+    if interpolate:
+        # OpenKBP convention: at least one voxel, then a linearly interpolated
+        # percentile rather than a hard order statistic.
+        num_voxels = max(1, num_voxels)
+        if num_voxels >= len(dose_values):
+            return float(np.min(dose_values))
+        fractional_volume = 100.0 - num_voxels / len(dose_values) * 100.0
+        return float(np.percentile(dose_values, fractional_volume))
 
     if num_voxels >= len(dose_values):
         # Requested volume exceeds structure volume
@@ -487,6 +510,12 @@ def compare_dvh_score(
 
     The score is the unweighted mean absolute error over D1, D95, and D99 for
     every target and mean dose and D0.1cc for every OAR. It is reported in Gy.
+
+    D0.1cc uses the challenge's own convention (``interpolate=True``), which
+    clamps to at least one voxel and interpolates a percentile. The default
+    order-statistic convention of :func:`compute_dose_at_volume_cc` disagrees by
+    around 1 Gy on a small OAR and would not reproduce published OpenKBP
+    numbers.
     """
     _validate_comparable_doses(reference, evaluated)
     target_structures = (targets,) if isinstance(targets, Structure) else tuple(targets)
@@ -504,8 +533,8 @@ def compare_dvh_score(
         )
         errors.append(
             abs(
-                compute_dose_at_volume_cc(evaluated, oar, 0.1)
-                - compute_dose_at_volume_cc(reference, oar, 0.1)
+                compute_dose_at_volume_cc(evaluated, oar, 0.1, interpolate=True)
+                - compute_dose_at_volume_cc(reference, oar, 0.1, interpolate=True)
             )
         )
 

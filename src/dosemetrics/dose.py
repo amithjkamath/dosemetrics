@@ -116,9 +116,18 @@ class Dose:
         if structure.mask is None:
             return False
 
-        return (
-            self.shape == structure.mask.shape
-            and np.allclose(self.spacing, structure.spacing, rtol=1e-5)
+        if self.shape != structure.mask.shape:
+            return False
+
+        # A structure with unspecified spacing is a mask on whatever grid it is
+        # paired with, so only the shape can be checked. This is the common case
+        # -- masks and dose usually come from the same file set -- and requiring
+        # the caller to restate the grid on every structure was pure friction.
+        if structure.spacing is None:
+            return True
+
+        return bool(
+            np.allclose(self.spacing, structure.spacing, rtol=1e-5)
             and np.allclose(self.origin, structure.origin, rtol=1e-3, atol=1.0)
         )
 
