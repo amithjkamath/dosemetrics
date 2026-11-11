@@ -3,7 +3,7 @@ site_url: https://amith-kamath.github.io/dosemetrics/
 site_description: A Python library for measuring radiotherapy doses and creating interactive visualizations
 site_author: Amith Kamath
 repo_url: https://github.com/amith-kamath/dosemetrics
-repo_name: contouraid/dosemetrics
+repo_name: amith-kamath/dosemetrics
 edit_uri: edit/main/docs/
 
 # Internal design and implementation notes live in the repository but are not

@@ -2,8 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(python3 -c \"import fitz; print\\('pymupdf ok'\\)\")",
-      "Bash(python3 -c \"import pdf2image; print\\('pdf2image ok'\\)\")",
-      "Bash(pdftoppm -r 150 -f 18 -l 22 -png ~/repos/business/Defense.pdf ~/repos/dosemetrics/docs/images/slide)"
+      "Bash(python3 -c \"import pdf2image; print\\('pdf2image ok'\\)\")"
     ]
   }
 }
