@@ -1,12 +1,8 @@
 name: Deploy Documentation
 
+# Manual only while the documentation is not public yet. To publish, enable
+# GitHub Pages (Source: GitHub Actions) and restore the push trigger on main.
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
