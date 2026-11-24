@@ -51,7 +51,7 @@ def panel():
         
         - Live App: dosemetrics.streamlit.app
         - Example Dataset: HuggingFace Dataset (https://huggingface.co/datasets/contouraid/dosemetrics-data)
-        - Documentation: GitHub Repository (https://github.com/amith-kamath/dosemetrics)
+        - Documentation: GitHub Repository (https://github.com/amithjkamath/dosemetrics)
         - More Info: www.contouraid.com
         
         ## Usage Tips

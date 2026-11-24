@@ -2,8 +2,8 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://python.org)
 [![PyPI version](https://badge.fury.io/py/dosemetrics.svg)](https://badge.fury.io/py/dosemetrics)
-[![Tests](https://github.com/amith-kamath/dosemetrics/actions/workflows/tests.yml/badge.svg)](https://github.com/amith-kamath/dosemetrics/actions/workflows/tests.yml)
-[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://amith-kamath.github.io/dosemetrics/)
+[![Tests](https://github.com/amithjkamath/dosemetrics/actions/workflows/tests.yml/badge.svg)](https://github.com/amithjkamath/dosemetrics/actions/workflows/tests.yml)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://amithjkamath.github.io/dosemetrics/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 
 DoseMetrics 0.4.0 is a Python library for radiotherapy dose analysis. It provides typed containers for dose distributions and structures, NIfTI and DICOM-RT I/O, DVH and plan-quality metrics, dose and geometry comparisons, gamma analysis, batch utilities, and publication-ready Matplotlib plots.
@@ -17,7 +17,7 @@ pip install dosemetrics
 For local development:
 
 ```bash
-git clone https://github.com/amith-kamath/dosemetrics.git
+git clone https://github.com/amithjkamath/dosemetrics.git
 cd dosemetrics
 make setup
 ```
@@ -94,9 +94,9 @@ The documentation notebooks use the public `contouraid/dosemetrics-data` dataset
 
 ## Documentation and demo
 
-- [Documentation](https://amith-kamath.github.io/dosemetrics/)
+- [Documentation](https://amithjkamath.github.io/dosemetrics/)
 - [Interactive demo](https://huggingface.co/spaces/contouraid/dosemetrics)
-- [Issue tracker](https://github.com/amith-kamath/dosemetrics/issues)
+- [Issue tracker](https://github.com/amithjkamath/dosemetrics/issues)
 
 ## Citation
 
@@ -104,7 +104,7 @@ The documentation notebooks use the public `contouraid/dosemetrics-data` dataset
 @software{dosemetrics2026,
   author = {Kamath, Amith},
   title = {DoseMetrics: A Python Library for Radiotherapy Dose Analysis},
-  url = {https://github.com/amith-kamath/dosemetrics},
+  url = {https://github.com/amithjkamath/dosemetrics},
   version = {0.4.0},
   year = {2026}
 }

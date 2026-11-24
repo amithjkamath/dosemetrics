@@ -154,7 +154,7 @@ info: ## Show project information
 	@echo "  Version:     $$(grep '^version' pyproject.toml | cut -d'"' -f2)"
 	@echo "  Python:      $$(python3 --version | awk '{print $$2}')"
 	@echo "  UV:          $$(uv --version 2>/dev/null || echo 'not installed')"
-	@echo "  Repository:  https://github.com/amith-kamath/dosemetrics"
+	@echo "  Repository:  https://github.com/amithjkamath/dosemetrics"
 	@echo "  HF Space:    https://huggingface.co/spaces/contouraid/dosemetrics"
 	@echo ""
 

@@ -39,5 +39,5 @@ from it, and — being written for creative works rather than software — carri
 no patent grant. It made DoseMetrics the one package in the ContourAId family
 that could not be used downstream. Apache-2.0 removes all three problems.
 
-The full text is in [LICENSE](https://github.com/amith-kamath/dosemetrics/blob/main/LICENSE);
-attribution requirements are in [NOTICE](https://github.com/amith-kamath/dosemetrics/blob/main/NOTICE).
+The full text is in [LICENSE](https://github.com/amithjkamath/dosemetrics/blob/main/LICENSE);
+attribution requirements are in [NOTICE](https://github.com/amithjkamath/dosemetrics/blob/main/NOTICE).

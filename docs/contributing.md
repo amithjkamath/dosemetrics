@@ -1,7 +1,7 @@
 # Contributing to DoseMetrics
 
 Changes are welcome through the
-[GitHub repository](https://github.com/amith-kamath/dosemetrics).
+[GitHub repository](https://github.com/amithjkamath/dosemetrics).
 
 ## Preview documentation locally
 
@@ -33,9 +33,9 @@ committed.
 
 ## Propose a change
 
-- [Open an issue](https://github.com/amith-kamath/dosemetrics/issues) for a bug,
+- [Open an issue](https://github.com/amithjkamath/dosemetrics/issues) for a bug,
   unclear definition, or larger documentation proposal.
-- [Open a pull request](https://github.com/amith-kamath/dosemetrics/pulls) for a
+- [Open a pull request](https://github.com/amithjkamath/dosemetrics/pulls) for a
   concrete correction.
 - Keep public API examples importable; documentation tests inspect every
   Python code block.

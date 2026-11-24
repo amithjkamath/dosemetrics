@@ -83,9 +83,9 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/amith-kamath/dosemetrics"
-Repository = "https://github.com/amith-kamath/dosemetrics"
-Issues = "https://github.com/amith-kamath/dosemetrics/issues"
+Homepage = "https://github.com/amithjkamath/dosemetrics"
+Repository = "https://github.com/amithjkamath/dosemetrics"
+Issues = "https://github.com/amithjkamath/dosemetrics/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

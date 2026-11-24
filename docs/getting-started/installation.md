@@ -38,7 +38,7 @@ This includes:
 For development, clone the repository and install in editable mode:
 
 ```bash
-git clone https://github.com/amith-kamath/dosemetrics.git
+git clone https://github.com/amithjkamath/dosemetrics.git
 cd dosemetrics
 ```
 
